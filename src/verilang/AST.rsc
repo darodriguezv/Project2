@@ -1,10 +1,8 @@
 module verilang::AST
 
-// ─────────────────────────────────────────────
 //  ABSTRACT SYNTAX TREE  for VeriLang
 //  Each constructor mirrors a concrete syntax rule.
 //  str is used for identifiers (names).
-// ─────────────────────────────────────────────
 
 // Top-level program is a single module
 data Program = program(Module \module);
