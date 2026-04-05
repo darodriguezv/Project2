@@ -4,106 +4,87 @@ import verilang::Syntax;
 import verilang::AST;
 import ParseTree;
 
-Module parseModule(str src) {
+Program implodeProgram(str src) {
   Tree t = parse(#start[Module], src).top;
-  return toModule(t);
+  return implodeModule(t);
 }
 
-Module toModule((Module)`defmodule <Identifier name> <ImportList imports> <ModuleElement* elements> end`)
-  = module_("<name>", toImportList(imports), [toModuleElement(e) | e <- elements]);
+Program implodeModule((Module)`defmodule <Identifier name> <Import* imps> <ModuleElement* elems> end`)
+  = program(\module("<name>",
+            [ implodeImport(i) | i <- imps ],
+            [ implodeElement(e) | e <- elems ]));
 
-ImportList toImportList((ImportList)`<Import* imports>`)
-  = importList([toImport(i) | i <- imports]);
+Import implodeImport((Import)`using <Identifier name>`) = \import("<name>");
 
-Import toImport((Import)`using <Identifier moduleName>`)
-  = import_("<moduleName>");
+ModuleElement implodeElement((ModuleElement)`<SpaceDecl s>`)      = spaceDecl(implodeSpace(s));
+ModuleElement implodeElement((ModuleElement)`<OperatorDecl od>`)  = operatorDecl(implodeOperator(od));
+ModuleElement implodeElement((ModuleElement)`<VarDecl v>`)        = varDecl(implodeVar(v));
+ModuleElement implodeElement((ModuleElement)`<RuleDecl r>`)       = ruleDecl(implodeRule(r));
+ModuleElement implodeElement((ModuleElement)`<ExpressionDecl e>`) = expressionDecl(implodeExpr(e));
 
-ModuleElement toModuleElement((ModuleElement)`<SpaceDecl decl>`)
-  = moduleSpaceDecl(toSpaceDecl(decl));
-ModuleElement toModuleElement((ModuleElement)`<OperatorDecl decl>`)
-  = moduleOperatorDecl(toOperatorDecl(decl));
-ModuleElement toModuleElement((ModuleElement)`<VarDecl decl>`)
-  = moduleVarDecl(toVarDecl(decl));
-ModuleElement toModuleElement((ModuleElement)`<RuleDecl decl>`)
-  = moduleRuleDecl(toRuleDecl(decl));
-ModuleElement toModuleElement((ModuleElement)`<ExpressionDecl decl>`)
-  = moduleExpressionDecl(toExpressionDecl(decl));
+SpaceDecl implodeSpace((SpaceDecl)`defspace <Identifier n> <SubspaceRelation s> end`)
+  = space("<n>", implodeSubspaceRel(s));
+SpaceDecl implodeSpace((SpaceDecl)`defspace <Identifier n> end`)
+  = space("<n>");
 
-SpaceDecl toSpaceDecl((SpaceDecl)`defspace <Identifier name> <SubspaceRelation relation> end`)
-  = spaceWithParent("<name>", toSubspaceRelation(relation));
-SpaceDecl toSpaceDecl((SpaceDecl)`defspace <Identifier name> end`)
-  = spaceOnly("<name>");
+SubspaceRel implodeSubspaceRel((SubspaceRelation)`\< <Identifier parent>`)
+  = subspaceOf("<parent>");
 
-SubspaceRelation toSubspaceRelation((SubspaceRelation)`\< <Identifier parent>`)
-  = subspaceRelation("<parent>");
+OperatorDecl implodeOperator((OperatorDecl)`defoperator <Identifier n> : <TypeChain tc> <AttributeList al> end`)
+  = \operator("<n>", implodeTypeChain(tc), implodeAttrList(al));
+OperatorDecl implodeOperator((OperatorDecl)`defoperator <Identifier n> : <TypeChain tc> end`)
+  = \operator("<n>", implodeTypeChain(tc));
 
-OperatorDecl toOperatorDecl((OperatorDecl)`defoperator <Identifier name> : <TypeChain chain> <AttributeList attrs> end`)
-  = operatorWithAttributes("<name>", toTypeChain(chain), toAttributeList(attrs));
-OperatorDecl toOperatorDecl((OperatorDecl)`defoperator <Identifier name> : <TypeChain chain> end`)
-  = operatorOnly("<name>", toTypeChain(chain));
+TypeChain implodeTypeChain((TypeChain)`<Identifier t> -\> <TypeChain rest>`)
+  = arrow("<t>", implodeTypeChain(rest));
+TypeChain implodeTypeChain((TypeChain)`<Identifier t>`)
+  = baseType("<t>");
 
-TypeChain toTypeChain((TypeChain)`<Identifier domain> -\> <TypeChain codomain>`)
-  = typeArrow("<domain>", toTypeChain(codomain));
-TypeChain toTypeChain((TypeChain)`<Identifier name>`)
-  = typeBase("<name>");
+VarDecl implodeVar((VarDecl)`defvar <{VarBinding ","}+ bs> end`)
+  = varDecl([ implodeVarBinding(b) | b <- bs ]);
 
-VarDecl toVarDecl((VarDecl)`defvar <{VarBinding ","}+ bindings> end`)
-  = varDecl([toVarBinding(b) | b <- bindings]);
+VarBinding implodeVarBinding((VarBinding)`<Identifier name> : <Identifier t>`)
+  = binding("<name>", "<t>");
 
-VarBinding toVarBinding((VarBinding)`<Identifier name> : <Identifier typeName>`)
-  = varBinding("<name>", "<typeName>");
+RuleDecl implodeRule((RuleDecl)`defrule <OperatorApplication lhs> -\> <OperatorApplication rhs> end`)
+  = ruleApp(implodeApp(lhs), implodeApp(rhs));
 
-RuleDecl toRuleDecl((RuleDecl)`defrule <OperatorApplication lhs> -\> <OperatorApplication rhs> end`)
-  = ruleDecl(toOperatorApplication(lhs), toOperatorApplication(rhs));
+OperatorApp implodeApp((OperatorApplication)`( <Identifier op> <OperatorArg* args> )`)
+  = app("<op>", [ implodeArg(a) | a <- args ]);
 
-OperatorApplication toOperatorApplication((OperatorApplication)`( <IdentifierList ids> )`) {
-  list[str] idStrings = toIdentifierList(ids).values;
-  str op = idStrings[0];
-  if (size(idStrings) == 1) {
-    return operatorApplicationNoArgs(op);
-  }
-  return operatorApplication(op, identifierList(idStrings[1 ..]));
-}
+OperatorArg implodeArg((OperatorArg)`<Identifier id>`)         = idArg("<id>");
+OperatorArg implodeArg((OperatorArg)`<OperatorApplication a>`) = appArg(implodeApp(a));
 
-IdentifierList toIdentifierList((IdentifierList)`<{Identifier ""}+ values>`)
-  = identifierList(["<v>" | v <- values]);
+ExpressionDecl implodeExpr((ExpressionDecl)`defexpression <LogicalExpression body> <AttributeList al> end`)
+  = expression(implodeLogical(body), implodeAttrList(al));
+ExpressionDecl implodeExpr((ExpressionDecl)`defexpression <LogicalExpression body> end`)
+  = expression(implodeLogical(body));
 
-ExpressionDecl toExpressionDecl((ExpressionDecl)`defexpression <LogicalExpression body> <AttributeList attrs> end`)
-  = expressionWithAttributes(toLogicalExpression(body), toAttributeList(attrs));
-ExpressionDecl toExpressionDecl((ExpressionDecl)`defexpression <LogicalExpression body> end`)
-  = expressionOnly(toLogicalExpression(body));
+LogicalExpr implodeLogical((LogicalExpression)`forall <Identifier v> in <Identifier d> . <LogicalExpression body>`) = \forall("<v>", "<d>", implodeLogical(body));
+LogicalExpr implodeLogical((LogicalExpression)`exists <Identifier v> in <Identifier d> . <LogicalExpression body>`) = \exists("<v>", "<d>", implodeLogical(body));
+LogicalExpr implodeLogical((LogicalExpression)`<LogicalExpression l> ≡ <LogicalExpression r>`)     = equiv(implodeLogical(l), implodeLogical(r));
+LogicalExpr implodeLogical((LogicalExpression)`<LogicalExpression l> =\> <LogicalExpression r>`)   = implies(implodeLogical(l), implodeLogical(r));
+LogicalExpr implodeLogical((LogicalExpression)`<LogicalExpression l> and <LogicalExpression r>`)   = \and(implodeLogical(l), implodeLogical(r));
+LogicalExpr implodeLogical((LogicalExpression)`<LogicalExpression l> or <LogicalExpression r>`)    = \or(implodeLogical(l), implodeLogical(r));
+LogicalExpr implodeLogical((LogicalExpression)`neg <LogicalExpression e>`)                         = \neg(implodeLogical(e));
+LogicalExpr implodeLogical((LogicalExpression)`( <LogicalExpression e> )`)                         = parenExpr(implodeLogical(e));
+LogicalExpr implodeLogical((LogicalExpression)`<AtomicExpression a>`)                              = implodeAtomic(a);
 
-LogicalExpression toLogicalExpression((LogicalExpression)`<QuantifiedExpression quantified>`)
-  = logicalQuantified(toQuantifiedExpression(quantified));
-LogicalExpression toLogicalExpression((LogicalExpression)`<AtomicExpression atomic>`)
-  = logicalAtomic(toAtomicExpression(atomic));
-LogicalExpression toLogicalExpression((LogicalExpression)`<LogicalExpression lhs> and <LogicalExpression rhs>`)
-  = logicalAnd(toLogicalExpression(lhs), toLogicalExpression(rhs));
-LogicalExpression toLogicalExpression((LogicalExpression)`<LogicalExpression lhs> or <LogicalExpression rhs>`)
-  = logicalOr(toLogicalExpression(lhs), toLogicalExpression(rhs));
-LogicalExpression toLogicalExpression((LogicalExpression)`neg <LogicalExpression expr>`)
-  = logicalNeg(toLogicalExpression(expr));
-LogicalExpression toLogicalExpression((LogicalExpression)`<LogicalExpression lhs> ≡ <LogicalExpression rhs>`)
-  = logicalEquiv(toLogicalExpression(lhs), toLogicalExpression(rhs));
+LogicalExpr implodeQuantified((QuantifiedExpression)`forall <Identifier v> in <Identifier d> . <LogicalExpression body>`)
+  = \forall("<v>", "<d>", implodeLogical(body));
+LogicalExpr implodeQuantified((QuantifiedExpression)`exists <Identifier v> in <Identifier d> . <LogicalExpression body>`)
+  = \exists("<v>", "<d>", implodeLogical(body));
 
-QuantifiedExpression toQuantifiedExpression((QuantifiedExpression)`forall <Identifier varName> in <Identifier domain> . <LogicalExpression body>`)
-  = forallExpr("<varName>", "<domain>", toLogicalExpression(body));
-QuantifiedExpression toQuantifiedExpression((QuantifiedExpression)`exists <Identifier varName> in <Identifier domain> . <LogicalExpression body>`)
-  = existsExpr("<varName>", "<domain>", toLogicalExpression(body));
+LogicalExpr implodeAtomic((AtomicExpression)`<OperatorApplication a>`)                        = appExpr(implodeApp(a));
+LogicalExpr implodeAtomic((AtomicExpression)`<Identifier x> in <Identifier s>`)               = memberExpr("<x>", "<s>");
+LogicalExpr implodeAtomic((AtomicExpression)`<Literal lit>`)                                  = litExpr(implodeLiteral(lit));
 
-AtomicExpression toAtomicExpression((AtomicExpression)`<OperatorApplication app>`)
-  = atomicOperatorApplication(toOperatorApplication(app));
-AtomicExpression toAtomicExpression((AtomicExpression)`<Identifier element> in <Identifier collection>`)
-  = atomicMembership("<element>", "<collection>");
-AtomicExpression toAtomicExpression((AtomicExpression)`<Identifier lhs> <Identifier op> <Identifier rhs>`)
-  = atomicInfix("<lhs>", "<op>", "<rhs>");
-AtomicExpression toAtomicExpression((AtomicExpression)`( <LogicalExpression expression> )`)
-  = atomicParen(toLogicalExpression(expression));
+Lit implodeLiteral((Literal)`<IntLiteral n>`)   = litInt("<n>");
+Lit implodeLiteral((Literal)`<FloatLiteral r>`) = litFloat("<r>");
+Lit implodeLiteral((Literal)`<CharLiteral c>`)  = litChar("<c>");
 
-AttributeList toAttributeList((AttributeList)`[ <Attribute+ attrs> ]`)
-  = attributeList([toAttribute(a) | a <- attrs]);
+list[verilang::AST::Attribute] implodeAttrList((AttributeList)`[ <Attribute+ attrs> ]`)
+  = [ implodeAttr(a) | a <- attrs ];
 
-Attribute toAttribute((Attribute)`<Identifier name>`)
-  = attributeOnly("<name>");
-Attribute toAttribute((Attribute)`<Identifier name> : <Identifier v>`)
-  = attributeWithValue("<name>", "<v>");
+verilang::AST::Attribute implodeAttr((Attribute)`<Identifier n> : <Identifier v>`) = attrWithValue("<n>", "<v>");
+verilang::AST::Attribute implodeAttr((Attribute)`<Identifier n>`)                   = attr("<n>");

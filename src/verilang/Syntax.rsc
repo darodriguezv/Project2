@@ -1,38 +1,30 @@
 module verilang::Syntax
 
-layout Layout
-  = [\ \t\n\r]+
+layout Layout = WhitespaceOrComment* !>> [\ \t\n\r];
+
+lexical WhitespaceOrComment
+  = [\ \t\n\r]
   | "//" ![\n]* "\n"
   ;
 
 keyword Keywords
-  = "defmodule" | "using" | "defspace" | "defoperator" | "defexpression"
-  | "defrule" | "defvar" | "end" | "forall" | "exists" | "in"
-  | "and" | "or" | "neg"
+  = "defmodule" | "using"     | "defspace"
+  | "defoperator" | "defexpression" | "defrule"
+  | "defvar"   | "end"        | "forall"
+  | "exists"   | "in"
+  | "and"      | "or"         | "neg"
   ;
 
 lexical Identifier
-  = @category="identifier" [a-zA-Z] [a-zA-Z0-9\-]* !>> [a-zA-Z0-9\-] \ Keywords
+  = [a-zA-Z] [a-zA-Z0-9\-]* !>> [a-zA-Z0-9\-] \ Keywords
   ;
 
-lexical IntLiteral
-  = @category="literal" [0-9]+ !>> [0-9]
-  ;
-
-lexical FloatLiteral
-  = @category="literal" [0-9]+ "." [0-9]+ !>> [0-9]
-  ;
-
-lexical CharLiteral
-  = @category="literal" "\'" ![\'\\] "\'"
-  ;
+lexical IntLiteral   = [0-9]+ !>> [0-9];
+lexical FloatLiteral = [0-9]+ "." [0-9]+ !>> [0-9];
+lexical CharLiteral  = "\'" ![\'\\] "\'";
 
 start syntax Module
-  = "defmodule" Identifier ImportList ModuleElement* "end"
-  ;
-
-syntax ImportList
-  = Import*
+  = "defmodule" Identifier Import* ModuleElement* "end"
   ;
 
 syntax Import
@@ -79,11 +71,12 @@ syntax RuleDecl
   ;
 
 syntax OperatorApplication
-  = "(" IdentifierList ")"
+  = "(" Identifier OperatorArg* ")"
   ;
 
-syntax IdentifierList
-  = {Identifier ""}+
+syntax OperatorArg
+  = Identifier
+  | OperatorApplication
   ;
 
 syntax ExpressionDecl
@@ -91,13 +84,21 @@ syntax ExpressionDecl
   | "defexpression" LogicalExpression "end"
   ;
 
+// Quantifiers are inlined directly here at the TOP of the priority chain
+// so they extend as far right as possible (standard logic convention).
+// Using an injection (QuantifiedExpression) caused the priority to not apply.
 syntax LogicalExpression
-  = QuantifiedExpression
+  = "forall" Identifier "in" Identifier "." LogicalExpression
+  | "exists" Identifier "in" Identifier "." LogicalExpression
+  > left ( LogicalExpression "≡"   LogicalExpression
+         | LogicalExpression "=\>" LogicalExpression
+         )
+  > left ( LogicalExpression "and" LogicalExpression
+         | LogicalExpression "or"  LogicalExpression
+         )
+  > "neg" LogicalExpression
+  | @avoid "(" LogicalExpression ")"
   | AtomicExpression
-  | LogicalExpression "≡" LogicalExpression
-  | LogicalExpression "and" LogicalExpression
-  | LogicalExpression "or" LogicalExpression
-  | "neg" LogicalExpression
   ;
 
 syntax QuantifiedExpression
@@ -108,8 +109,13 @@ syntax QuantifiedExpression
 syntax AtomicExpression
   = OperatorApplication
   | Identifier "in" Identifier
-  | Identifier Identifier Identifier
-  | "(" LogicalExpression ")"
+  | Literal
+  ;
+
+syntax Literal
+  = IntLiteral
+  | FloatLiteral
+  | CharLiteral
   ;
 
 syntax AttributeList
@@ -117,6 +123,6 @@ syntax AttributeList
   ;
 
 syntax Attribute
-  = Identifier
-  | Identifier ":" Identifier
+  = Identifier ":" Identifier
+  | Identifier
   ;

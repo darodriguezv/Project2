@@ -1,0 +1,2 @@
+defmodule Broken
+defspace Nat end

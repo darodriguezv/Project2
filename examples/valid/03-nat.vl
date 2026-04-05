@@ -1,0 +1,11 @@
+defmodule Nat
+using Peano
+defspace Nat < Int end
+defoperator zero : Nat end
+defoperator succ : Nat -> Nat end
+defoperator add : Nat -> Nat -> Nat [ associative id : zero ] end
+defoperator id : Nat -> Nat end
+defvar n : Nat , m : Nat end
+defrule (add (succ n) m) -> (succ (add n m)) end
+defexpression forall n in Nat . (add zero n) => (id n) end
+end

@@ -1,0 +1,10 @@
+defmodule Bool
+defspace Bool end
+defoperator not : Bool -> Bool end
+defoperator and : Bool -> Bool -> Bool [ associative commutative ] end
+defoperator or : Bool -> Bool -> Bool [ associative commutative ] end
+defoperator id : Bool -> Bool end
+defvar p : Bool , q : Bool end
+defrule (not (not p)) -> (id p) end
+defexpression forall p in Bool . (not p) end
+end

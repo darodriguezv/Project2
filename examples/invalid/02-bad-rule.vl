@@ -1,0 +1,3 @@
+defmodule Broken
+defrule f -> g end
+end
