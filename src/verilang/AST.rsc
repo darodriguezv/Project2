@@ -1,81 +1,100 @@
 module verilang::AST
 
-//  ABSTRACT SYNTAX TREE  for VeriLang
-//  Each constructor mirrors a concrete syntax rule.
-//  str is used for identifiers (names).
+data Module
+  = module_(str name, ImportList imports, list[ModuleElement] elements)
+  ;
 
-// Top-level program is a single module
-data Program = program(Module \module);
+data ImportList
+  = importList(list[Import] imports)
+  ;
 
-// Module: name, list of imports, list of elements
-data Module = \module(str name, list[Import] imports, list[ModuleElement] elements);
+data Import
+  = import_(str moduleName)
+  ;
 
-// Import
-data Import = \import(str moduleName);
-
-// Module elements (union type)
 data ModuleElement
-  = spaceDecl(SpaceDecl space)
-  | operatorDecl(OperatorDecl op)
-  | varDecl(VarDecl var)
-  | ruleDecl(RuleDecl rule)
-  | expressionDecl(ExpressionDecl expr)
+  = moduleSpaceDecl(SpaceDecl decl)
+  | moduleOperatorDecl(OperatorDecl decl)
+  | moduleVarDecl(VarDecl decl)
+  | moduleRuleDecl(RuleDecl decl)
+  | moduleExpressionDecl(ExpressionDecl decl)
   ;
 
-// Space declaration
 data SpaceDecl
-  = space(str name, SubspaceRel subspace)   // with subspace relation
-  | space(str name)                          // plain space
+  = spaceWithParent(str name, SubspaceRelation parent)
+  | spaceOnly(str name)
   ;
 
-data SubspaceRel = subspaceOf(str parentSpace);
+data SubspaceRelation
+  = subspaceRelation(str parent)
+  ;
 
-// Operator declaration
 data OperatorDecl
-  = \operator(str name, TypeChain typeChain, list[Attribute] attributes)
-  | \operator(str name, TypeChain typeChain)
+  = operatorWithAttributes(str name, TypeChain typeChain, AttributeList attributes)
+  | operatorOnly(str name, TypeChain typeChain)
   ;
 
-// Type chain (curried: A -> B -> C)
 data TypeChain
-  = arrow(str domain, TypeChain codomain)
-  | baseType(str typeName)
+  = typeArrow(str domain, TypeChain codomain)
+  | typeBase(str name)
   ;
 
-// Variable declaration  (one defvar may bind multiple variables)
-data VarDecl = varDecl(list[VarBinding] bindings);
+data VarDecl
+  = varDecl(list[VarBinding] bindings)
+  ;
 
-data VarBinding = binding(str varName, str typeName);
+data VarBinding
+  = varBinding(str name, str typeName)
+  ;
 
-// Rule declaration
-data RuleDecl = rule(OperatorApp lhs, OperatorApp rhs);
+data RuleDecl
+  = ruleDecl(OperatorApplication lhs, OperatorApplication rhs)
+  ;
 
-data OperatorApp = app(str opName, list[str] args);
+data OperatorApplication
+  = operatorApplication(str operatorName, IdentifierList args)
+  | operatorApplicationNoArgs(str operatorName)
+  ;
 
-// Expression declaration
+data IdentifierList
+  = identifierList(list[str] values)
+  ;
+
 data ExpressionDecl
-  = expression(LogicalExpr body, list[Attribute] attributes)
-  | expression(LogicalExpr body)
+  = expressionWithAttributes(LogicalExpression body, AttributeList attributes)
+  | expressionOnly(LogicalExpression body)
   ;
 
-// Logical expressions
-data LogicalExpr
-  = \forall(str varName, str domain, LogicalExpr body)
-  | \exists(str varName, str domain, LogicalExpr body)
-  | equiv(LogicalExpr lhs, LogicalExpr rhs)        // ≡
-  | implies(LogicalExpr lhs, LogicalExpr rhs)      // =>
-  | \and(LogicalExpr lhs, LogicalExpr rhs)
-  | \or(LogicalExpr lhs, LogicalExpr rhs)
-  | \neg(LogicalExpr expr)
-  | appExpr(OperatorApp app)                        // (op args)
-  | memberExpr(str element, str collection)         // x in S
-  | infixExpr(str lhs, str op, str rhs)             // x op y (infix identifier application)
-  | parenExpr(LogicalExpr inner)
-  | litExpr(Lit literal)
+data LogicalExpression
+  = logicalQuantified(QuantifiedExpression expr)
+  | logicalAtomic(AtomicExpression expr)
+  | logicalAnd(LogicalExpression lhs, LogicalExpression rhs)
+  | logicalOr(LogicalExpression lhs, LogicalExpression rhs)
+  | logicalNeg(LogicalExpression expr)
+  | logicalEquiv(LogicalExpression lhs, LogicalExpression rhs)
   ;
 
-// Literals
-data Lit = litInt(str n) | litFloat(str r) | litChar(str c);
+data QuantifiedExpression
+  = forallExpr(str varName, str domain, LogicalExpression body)
+  | existsExpr(str varName, str domain, LogicalExpression body)
+  ;
 
-// Attributes
-data Attribute = attrWithValue(str n, str v) | attr(str n);
+data AtomicExpression
+  = atomicOperatorApplication(OperatorApplication app)
+  | atomicMembership(str element, str collection)
+  | atomicInfix(str lhs, str op, str rhs)
+  | atomicParen(LogicalExpression expression)
+  ;
+
+data AttributeList
+  = attributeList(list[Attribute] attributes)
+  ;
+
+data Attribute
+  = attributeOnly(str name)
+  | attributeWithValue(str name, str val)
+  ;
+
+data Identifier
+  = identifier(str val)
+  ;

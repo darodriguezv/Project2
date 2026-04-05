@@ -1,50 +1,44 @@
 module verilang::Syntax
 
-//  LAYOUT  (whitespace + single-line comments)
-layout Layout = WhitespaceOrComment* !>> [\t\n\r\ ];
-
-lexical WhitespaceOrComment
+layout Layout
   = [\ \t\n\r]+
   | "//" ![\n]* "\n"
   ;
 
-//  KEYWORDS
 keyword Keywords
-  = "defmodule" | "using"     | "defspace"
-  | "defoperator" | "defexpression" | "defrule"
-  | "defvar"   | "end"        | "forall"
-  | "exists"   | "defer"      | "in"
-  | "and"      | "or"         | "neg"
+  = "defmodule" | "using" | "defspace" | "defoperator" | "defexpression"
+  | "defrule" | "defvar" | "end" | "forall" | "exists" | "in"
+  | "and" | "or" | "neg"
   ;
 
-//  LEXICALS  (tokens / terminals)
+lexical Identifier
+  = @category="identifier" [a-zA-Z] [a-zA-Z0-9\-]* !>> [a-zA-Z0-9\-] \ Keywords
+  ;
 
-// Identifier: letter followed by letters, digits, or dashes
-// Must NOT be a reserved keyword
-lexical Identifier = [a-zA-Z][a-zA-Z0-9\-]* !>> [a-zA-Z0-9\-] \ Keywords;
+lexical IntLiteral
+  = @category="literal" [0-9]+ !>> [0-9]
+  ;
 
-// Integer literal: sequence of digits
-lexical IntLiteral = [0-9]+ !>> [0-9];
+lexical FloatLiteral
+  = @category="literal" [0-9]+ "." [0-9]+ !>> [0-9]
+  ;
 
-// Float literal: digits, dot, digits
-lexical FloatLiteral = [0-9]+ "." [0-9]+ !>> [0-9];
+lexical CharLiteral
+  = @category="literal" "\'" ![\'\\] "\'"
+  ;
 
-// Character literal: single-quoted character
-lexical CharLiteral = "\'" ![\'\\] "\'";
+start syntax Module
+  = "defmodule" Identifier ImportList ModuleElement* "end"
+  ;
 
-//  PROGRAM ENTRY POINT
-start syntax Program = Module;
-
-//  MODULE
-syntax Module
-  = @category="keyword" "defmodule" Identifier Import* ModuleElement* "end"
+syntax ImportList
+  = Import*
   ;
 
 syntax Import
-  = @category="keyword" "using" Identifier
+  = "using" Identifier
   ;
 
-//  MODULE ELEMENTS
 syntax ModuleElement
   = SpaceDecl
   | OperatorDecl
@@ -53,97 +47,76 @@ syntax ModuleElement
   | ExpressionDecl
   ;
 
-// 
-//  SPACE DECLARATION
 syntax SpaceDecl
-  = @category="keyword" "defspace" Identifier SubspaceRel "end"
-  | @category="keyword" "defspace" Identifier "end"
+  = "defspace" Identifier SubspaceRelation "end"
+  | "defspace" Identifier "end"
   ;
 
-syntax SubspaceRel
-  = "\<" Identifier          // e.g.   Set < SuperSet
+syntax SubspaceRelation
+  = "\<" Identifier
   ;
 
-//  OPERATOR DECLARATION
-//  Split into two alternatives (with / without attributes).
 syntax OperatorDecl
-  = @category="keyword" "defoperator" Identifier ":" TypeChain AttributeList "end"
-  | @category="keyword" "defoperator" Identifier ":" TypeChain "end"
+  = "defoperator" Identifier ":" TypeChain AttributeList "end"
+  | "defoperator" Identifier ":" TypeChain "end"
   ;
 
-// Curried type chain:  A -> B -> C
 syntax TypeChain
-  = Type "-\>" TypeChain
-  | Type
+  = Identifier "-\>" TypeChain
+  | Identifier
   ;
 
-syntax Type = Identifier;
-
-//  VARIABLE DECLARATION
 syntax VarDecl
-  = @category="keyword" "defvar" {VarBinding ","}+ "end"
+  = "defvar" {VarBinding ","}+ "end"
   ;
 
 syntax VarBinding
-  = Identifier ":" Type
+  = Identifier ":" Identifier
   ;
 
-//  RULE DECLARATION
 syntax RuleDecl
-  = @category="keyword" "defrule" OperatorApplication "-\>" OperatorApplication "end"
+  = "defrule" OperatorApplication "-\>" OperatorApplication "end"
   ;
 
 syntax OperatorApplication
-  = "(" Identifier Identifier* ")"
+  = "(" IdentifierList ")"
   ;
 
-//  EXPRESSION DECLARATION
-//  Split into two explicit alternatives (with / without attributes).
+syntax IdentifierList
+  = {Identifier ""}+
+  ;
+
 syntax ExpressionDecl
-  = @category="keyword" "defexpression" LogicalExpr AttributeList "end"
-  | @category="keyword" "defexpression" LogicalExpr "end"
+  = "defexpression" LogicalExpression AttributeList "end"
+  | "defexpression" LogicalExpression "end"
   ;
 
-// ─────────────────────────────────────────────
-//  LOGICAL EXPRESSIONS
-//  (left-recursive and operator precedence handled by Rascal priorities)
-syntax LogicalExpr
-  = QuantifiedExpr
-  > left ( LogicalExpr "≡"   LogicalExpr
-         | LogicalExpr "=\>" LogicalExpr
-         )
-  > left ( LogicalExpr "and" LogicalExpr
-         | LogicalExpr "or"  LogicalExpr
-         )
-  > "neg" LogicalExpr
-  | AtomicExpr
+syntax LogicalExpression
+  = QuantifiedExpression
+  | AtomicExpression
+  | LogicalExpression "≡" LogicalExpression
+  | LogicalExpression "and" LogicalExpression
+  | LogicalExpression "or" LogicalExpression
+  | "neg" LogicalExpression
   ;
 
-syntax QuantifiedExpr
-  = @category="keyword" "forall" Identifier "in" Identifier "." LogicalExpr
-  | @category="keyword" "exists" Identifier "in" Identifier "." LogicalExpr
+syntax QuantifiedExpression
+  = "forall" Identifier "in" Identifier "." LogicalExpression
+  | "exists" Identifier "in" Identifier "." LogicalExpression
   ;
 
-syntax AtomicExpr
+syntax AtomicExpression
   = OperatorApplication
   | Identifier "in" Identifier
-  | Identifier Identifier Identifier          // infix operator application
-  | "(" LogicalExpr ")"
-  | Literal
+  | Identifier Identifier Identifier
+  | "(" LogicalExpression ")"
   ;
 
-syntax Literal
-  = IntLiteral
-  | FloatLiteral
-  | CharLiteral
-  ;
-
-//  ATTRIBUTES
 syntax AttributeList
   = "[" Attribute+ "]"
   ;
 
 syntax Attribute
-  = Identifier ":" Identifier
-  | Identifier
+  = Identifier
+  | Identifier ":" Identifier
   ;
