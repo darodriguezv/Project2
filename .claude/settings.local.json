@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(pandoc --version 2>$null)",
+      "PowerShell(if \\(-not $?\\) { \"pandoc not found\" })",
+      "PowerShell(Set-Location \"c:\\\\Users\\\\PATECNOLOGICOS\\\\OneDrive\\\\Escritorio\\\\Universidad\\\\Octavo Semestre\\\\lym\\\\project2\"; npx md-to-pdf README.md; Write-Host \"EXIT:$LASTEXITCODE\")",
+      "Read(//c/Program Files \\(x86\\)/Microsoft/Edge/Application/**)"
+    ]
+  }
+}
