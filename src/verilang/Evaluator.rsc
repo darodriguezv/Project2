@@ -35,6 +35,9 @@ void run(loc file) {
   } catch ParseError(loc l): {
     println("[FAIL] Parse error at line <l.begin.line>, column <l.begin.column>");
     return;
+  } catch Ambiguity(loc l, str sort, str _): {
+    println("[FAIL] Ambiguous parse at <l.begin.line>:<l.begin.column> in <sort>");
+    return;
   }
 
   // 2. Build AST
