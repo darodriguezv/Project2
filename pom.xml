@@ -1,9 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
+
   <groupId>project2</groupId>
   <artifactId>project2</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   <packaging>jar</packaging>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compiler.source>11</maven.compiler.source>
+    <maven.compiler.target>11</maven.compiler.target>
+  </properties>
+
+  <!-- usethesource hosts Rascal and TypePal releases -->
+  <repositories>
+    <repository>
+      <id>usethesource</id>
+      <url>https://releases.usethesource.io/maven/</url>
+    </repository>
+  </repositories>
+
+  <pluginRepositories>
+    <pluginRepository>
+      <id>usethesource</id>
+      <url>https://releases.usethesource.io/maven/</url>
+    </pluginRepository>
+  </pluginRepositories>
+
+  <dependencies>
+    <!-- Rascal standard library (|lib://rascal|) -->
+    <dependency>
+      <groupId>org.rascalmpl</groupId>
+      <artifactId>rascal</artifactId>
+      <version>0.34.0</version>
+    </dependency>
+
+    <!-- TypePal type-checking library (|lib://typepal|) -->
+    <dependency>
+      <groupId>org.rascalmpl</groupId>
+      <artifactId>typepal</artifactId>
+      <version>0.14.7</version>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <sourceDirectory>src</sourceDirectory>
+    <resources>
+      <resource>
+        <directory>src</directory>
+        <filtering>false</filtering>
+        <includes>
+          <include>**/*.rsc</include>
+        </includes>
+      </resource>
+      <resource>
+        <directory>.</directory>
+        <filtering>false</filtering>
+        <includes>
+          <include>META-INF/**</include>
+        </includes>
+      </resource>
+    </resources>
+
+    <plugins>
+      <plugin>
+        <groupId>org.rascalmpl</groupId>
+        <artifactId>rascal-maven-plugin</artifactId>
+        <version>0.14.7</version>
+        <configuration>
+          <bin>${project.build.outputDirectory}</bin>
+          <srcs>
+            <src>${project.basedir}/src</src>
+          </srcs>
+        </configuration>
+        <executions>
+          <execution>
+            <id>compile-rascal</id>
+            <phase>compile</phase>
+            <goals>
+              <goal>compile</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
 </project>
