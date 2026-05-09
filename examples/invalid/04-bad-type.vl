@@ -1,0 +1,8 @@
+// Invalid: operator and variable reference undeclared space "Unknown"
+defmodule BadType
+
+defspace Nat end
+defoperator succ : Nat -> Unknown end   // Unknown is not declared
+defvar n : Unknown end                  // Unknown is not declared
+
+end

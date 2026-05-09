@@ -10,9 +10,6 @@ data Module = \module(str name, list[Import] imports, list[ModuleElement] elemen
 
 data Import = \import(str moduleName);
 
-// FIX: field names shortened to avoid Rascal generating a
-// conflicting implicit accessor named "decl" for both
-// SpaceDecl and OperatorDecl (both types end in "Decl").
 data ModuleElement
   = spaceDecl(SpaceDecl sd)
   | operatorDecl(OperatorDecl od)
@@ -22,9 +19,13 @@ data ModuleElement
   ;
 
 // Space declaration
+//   defspace Name end
+//   defspace Name < Parent end
+//   defspace Name : BaseType end   (new: explicit base-type annotation)
 data SpaceDecl
   = space(str name, SubspaceRel subspace)
   | space(str name)
+  | spaceWithType(str name, str typeName)
   ;
 
 data SubspaceRel = subspaceOf(str parentSpace);
@@ -49,8 +50,13 @@ data VarBinding = binding(str varName, str typeName);
 // Rule declaration
 data RuleDecl = ruleApp(OperatorApp lhs, OperatorApp rhs);
 
-// Operator application — args can be identifiers or nested applications
-data OperatorArg = idArg(str name) | appArg(OperatorApp nested);
+// Operator application — args can be identifiers, nested applications, or literals
+data OperatorArg
+  = idArg(str name)
+  | appArg(OperatorApp nested)
+  | litArg(Lit literal)
+  ;
+
 data OperatorApp = app(str opName, list[OperatorArg] args);
 
 // Expression declaration
@@ -75,7 +81,18 @@ data LogicalExpr
   ;
 
 // Literals
-data Lit = litInt(str n) | litFloat(str r) | litChar(str c);
+//   litInt / litFloat / litChar : unchanged
+//   litBool  : true or false
+//   litString: a string value
+//   litTyped : a literal with an explicit type annotation (e.g. 42:Int)
+data Lit
+  = litInt(str n)
+  | litFloat(str r)
+  | litChar(str c)
+  | litBool(str b)
+  | litString(str s)
+  | litTyped(Lit inner, str typeName)
+  ;
 
 // Attributes
 data Attribute = attrWithValue(str n, str v) | attr(str n);

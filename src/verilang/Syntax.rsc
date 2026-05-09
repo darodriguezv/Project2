@@ -13,15 +13,18 @@ keyword Keywords
   | "defvar"   | "end"        | "forall"
   | "exists"   | "in"
   | "and"      | "or"         | "neg"
+  | "true"     | "false"
   ;
 
 lexical Identifier
   = [a-zA-Z] [a-zA-Z0-9\-]* !>> [a-zA-Z0-9\-] \ Keywords
   ;
 
-lexical IntLiteral   = [0-9]+ !>> [0-9];
-lexical FloatLiteral = [0-9]+ "." [0-9]+ !>> [0-9];
-lexical CharLiteral  = "\'" ![\'\\] "\'";
+lexical IntLiteral    = [0-9]+ !>> [0-9];
+lexical FloatLiteral  = [0-9]+ "." [0-9]+ !>> [0-9];
+lexical CharLiteral   = "\'" ![\'\\] "\'";
+lexical BoolLiteral   = "true" | "false";
+lexical StringLiteral = "\"" ![\"\n]* "\"";
 
 start syntax Module
   = "defmodule" Identifier Import* ModuleElement* "end"
@@ -42,6 +45,7 @@ syntax ModuleElement
 syntax SpaceDecl
   = "defspace" Identifier SubspaceRelation "end"
   | "defspace" Identifier "end"
+  | "defspace" Identifier ":" Identifier "end"
   ;
 
 syntax SubspaceRelation
@@ -77,6 +81,8 @@ syntax OperatorApplication
 syntax OperatorArg
   = Identifier
   | OperatorApplication
+  | TypedLiteral
+  | Literal
   ;
 
 syntax ExpressionDecl
@@ -84,9 +90,8 @@ syntax ExpressionDecl
   | "defexpression" LogicalExpression "end"
   ;
 
-// Quantifiers are inlined directly here at the TOP of the priority chain
-// so they extend as far right as possible (standard logic convention).
-// Using an injection (QuantifiedExpression) caused the priority to not apply.
+// Quantifiers are inlined at the TOP of the priority chain so they
+// extend as far right as possible (standard logic convention).
 syntax LogicalExpression
   = "forall" Identifier "in" Identifier "." LogicalExpression
   | "exists" Identifier "in" Identifier "." LogicalExpression
@@ -106,16 +111,25 @@ syntax QuantifiedExpression
   | "exists" Identifier "in" Identifier "." LogicalExpression
   ;
 
+// TypedLiteral has higher priority than plain Literal in AtomicExpression
 syntax AtomicExpression
   = OperatorApplication
   | Identifier "in" Identifier
+  > TypedLiteral
   | Literal
+  ;
+
+// A literal with an explicit type annotation: e.g.  42:Int  true:Bool
+syntax TypedLiteral
+  = Literal ":" Identifier
   ;
 
 syntax Literal
   = IntLiteral
   | FloatLiteral
   | CharLiteral
+  | BoolLiteral
+  | StringLiteral
   ;
 
 syntax AttributeList

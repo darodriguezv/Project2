@@ -22,10 +22,13 @@ ModuleElement implodeElement((ModuleElement)`<VarDecl v>`)        = varDecl(impl
 ModuleElement implodeElement((ModuleElement)`<RuleDecl r>`)       = ruleDecl(implodeRule(r));
 ModuleElement implodeElement((ModuleElement)`<ExpressionDecl e>`) = expressionDecl(implodeExpr(e));
 
+// Space declarations — now with three alternatives
 SpaceDecl implodeSpace((SpaceDecl)`defspace <Identifier n> <SubspaceRelation s> end`)
   = space("<n>", implodeSubspaceRel(s));
 SpaceDecl implodeSpace((SpaceDecl)`defspace <Identifier n> end`)
   = space("<n>");
+SpaceDecl implodeSpace((SpaceDecl)`defspace <Identifier n> : <Identifier t> end`)
+  = spaceWithType("<n>", "<t>");
 
 SubspaceRel implodeSubspaceRel((SubspaceRelation)`\< <Identifier parent>`)
   = subspaceOf("<parent>");
@@ -52,8 +55,11 @@ RuleDecl implodeRule((RuleDecl)`defrule <OperatorApplication lhs> -\> <OperatorA
 OperatorApp implodeApp((OperatorApplication)`( <Identifier op> <OperatorArg* args> )`)
   = app("<op>", [ implodeArg(a) | a <- args ]);
 
+// Operator argument — now with three alternatives including literals
 OperatorArg implodeArg((OperatorArg)`<Identifier id>`)         = idArg("<id>");
 OperatorArg implodeArg((OperatorArg)`<OperatorApplication a>`) = appArg(implodeApp(a));
+OperatorArg implodeArg((OperatorArg)`<TypedLiteral tl>`)       = litArg(implodeTypedLiteral(tl));
+OperatorArg implodeArg((OperatorArg)`<Literal lit>`)           = litArg(implodeLiteral(lit));
 
 ExpressionDecl implodeExpr((ExpressionDecl)`defexpression <LogicalExpression body> <AttributeList al> end`)
   = expression(implodeLogical(body), implodeAttrList(al));
@@ -75,13 +81,22 @@ LogicalExpr implodeQuantified((QuantifiedExpression)`forall <Identifier v> in <I
 LogicalExpr implodeQuantified((QuantifiedExpression)`exists <Identifier v> in <Identifier d> . <LogicalExpression body>`)
   = \exists("<v>", "<d>", implodeLogical(body));
 
-LogicalExpr implodeAtomic((AtomicExpression)`<OperatorApplication a>`)                        = appExpr(implodeApp(a));
-LogicalExpr implodeAtomic((AtomicExpression)`<Identifier x> in <Identifier s>`)               = memberExpr("<x>", "<s>");
-LogicalExpr implodeAtomic((AtomicExpression)`<Literal lit>`)                                  = litExpr(implodeLiteral(lit));
+// Atomic expressions — now with TypedLiteral
+LogicalExpr implodeAtomic((AtomicExpression)`<OperatorApplication a>`)      = appExpr(implodeApp(a));
+LogicalExpr implodeAtomic((AtomicExpression)`<Identifier x> in <Identifier s>`) = memberExpr("<x>", "<s>");
+LogicalExpr implodeAtomic((AtomicExpression)`<TypedLiteral tl>`)             = litExpr(implodeTypedLiteral(tl));
+LogicalExpr implodeAtomic((AtomicExpression)`<Literal lit>`)                 = litExpr(implodeLiteral(lit));
 
-Lit implodeLiteral((Literal)`<IntLiteral n>`)   = litInt("<n>");
-Lit implodeLiteral((Literal)`<FloatLiteral r>`) = litFloat("<r>");
-Lit implodeLiteral((Literal)`<CharLiteral c>`)  = litChar("<c>");
+// Typed literal: Literal ":" Identifier
+Lit implodeTypedLiteral((TypedLiteral)`<Literal lit> : <Identifier t>`)
+  = litTyped(implodeLiteral(lit), "<t>");
+
+// Raw literals — now includes bool and string
+Lit implodeLiteral((Literal)`<IntLiteral n>`)      = litInt("<n>");
+Lit implodeLiteral((Literal)`<FloatLiteral r>`)    = litFloat("<r>");
+Lit implodeLiteral((Literal)`<CharLiteral c>`)     = litChar("<c>");
+Lit implodeLiteral((Literal)`<BoolLiteral b>`)     = litBool("<b>");
+Lit implodeLiteral((Literal)`<StringLiteral s>`)   = litString("<s>");
 
 list[verilang::AST::Attribute] implodeAttrList((AttributeList)`[ <Attribute+ attrs> ]`)
   = [ implodeAttr(a) | a <- attrs ];

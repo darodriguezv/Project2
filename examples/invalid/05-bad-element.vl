@@ -1,0 +1,12 @@
+// Invalid: operator application uses undeclared operator and undeclared variable
+defmodule BadElement
+
+defspace Nat end
+defoperator succ : Nat -> Nat end
+defvar n : Nat end
+
+defrule (ghost n) -> (succ n) end   // "ghost" is not a declared operator
+
+defexpression forall x in Nat . (succ phantom) end  // "phantom" is not declared
+
+end
